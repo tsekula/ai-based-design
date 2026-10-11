@@ -28,6 +28,22 @@ contradicted this instance. For **visual quality** of slides and diagrams, also 
 | Batch size | ~10 ops per call max | ~60 shape ops in one call succeeded. Still keep one logical unit per call so failures are easy to localize | Flywheel build |
 | Tools | 5 incl. `import_image` | **4 only** (remote): `execute_code`, `export_shape`, `penpot_api_info`, `high_level_overview` | Tool list |
 | Tab suspension | n/a | `"plugin tab appears to be suspended (no heartbeat for Ns)"` happens when the Penpot tab is backgrounded. Ask the user to focus the tab; `penpot_api_info` still works meanwhile | Observed mid-session |
+| `toLocaleString` | n/a | **Silently a no-op** in the plugin sandbox: `(10000).toLocaleString('en-US')` returns `"10000"`. Format numbers with a regex: `String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')` | Funnel build: values rendered without separators until fixed |
+| `storage` lifetime | Resets on server restart | Also empty after a reconnect or tab resume. Every build must re-create its helpers in the first call | Empty after the tab-suspension episode |
+| Text bounds right after creation | n/a | `auto-height` text keeps its `resize()` height until the layout pass, so containment checks in the same call can false-positive. Re-check in a later call or trust the export | Slide number flagged outside safe area; export showed it fine |
+| Token API in plugins | Docs: "coming soon" | **Works** for color, spacing (math like `{space.base} * 3`), borderRadius, borderWidth, opacity, shadow, number, and sets/themes. Theme switching re-skins bound shapes | Design-system build, 2026-10-11 |
+| Typography tokens | n/a | **Unreliable via plugin**: composite typography tokens (and `fontSizes` tokens named `fs.*`) often bind (`shape.tokens` shows them) but **don't apply** (text stays Source Sans 14). Results varied run to run. **Use library typographies** for text instead | ~20 isolated probes |
+| `applyTypography` | n/a | Applies family/size/weight/letter-spacing but **drops lineHeight**. Re-set `t.lineHeight = typo.lineHeight` from the same style | Gate caught 1.2 vs 1.15 |
+| `LibraryTypography` fields | `typo.fontFamilies` | Field is `fontFamily`; set font via `typo.setFont(font, variant)`. Text layers expose **no reference** to their library style, so audit by value match | API docs + probe |
+| `applyToken` twice | n/a | Applying the **same token again toggles the binding off** | Re-apply left `tokens: {}` |
+| Tokens on groups | n/a | `applyToken` on a group **silently does nothing**. Bind children instead | Probe |
+| Token name prefixes | n/a | A name can't be both a token and a group prefix (`color.hero` + `color.hero.text` → error). Use leaf names like `color.hero.fill` | Error on create |
+| Alpha in color tokens | n/a | `rgba(...)` keeps alpha when applied; hex8 loses it; `resolvedValue` shows hex **without** alpha either way. Verify on the shape | Shadow opacity probe |
+| Themes vs sets | n/a | Activating a theme **deactivates sets not in it**; include shared sets (primitives) in every theme. Themes are file-wide (one look per file) | Probe |
+| Cross-page edits | n/a | Modifying a shape on a non-active page throws `Cannot modify a page that is not currently active`. `openPage` first (own call) | Editing component mains from Deck |
+| Variant listing | n/a | `library.components` lists **one entry per variant group**; enumerate via `container.variants.variantComponents()` | 4 listed vs 13 mains |
+| `export_shape('page')` | n/a | Can time out (500, `locator.waitFor`). Export boards by id instead; `'selection'` exports whatever the user has selected | Observed |
+| Token bindings timing | Async | Bindings land after the call returns, so **run audits in a separate call** | Same-call audit: 10 false violations; next call: 0 |
 
 When something here and the plugin API docs disagree, **the API docs (`penpot_api_info`) and a
 live probe win**. Update this table when you learn something new.
@@ -142,6 +158,8 @@ Token tiers: Global (`color.base.neutral.100`) → Semantic (`color.text.primary
 
 ## 5. Workflow recipes: read the matching reference first
 
+- **Any new design or slide → `references/design-system-gate.md` (mandatory)**: token/typography/component
+  architecture, token-only helpers, and the compliance gate that must pass before work is "done"
 - API, tokens, pages, effects, storage, idempotency → `references/penpot-api-patterns.md`
 - Design system build / audit / migration / rebrand → `references/design-system-workflows.md`
 - Design → HTML/CSS/React, token extraction, handoff → `references/design-to-code-workflows.md`

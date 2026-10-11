@@ -1,6 +1,6 @@
 ---
 name: slide-diagram-design
-description: Art direction for attractive, eye-catching presentation diagrams built in Penpot (flywheels, flows, matrices, funnels, timelines, org charts). Use whenever asked to design a slide, a diagram for a deck, or any presentation visual in Penpot — read it before creating the first shape.
+description: Art direction for attractive, eye-catching presentation diagrams built in Penpot (flywheels, flows, matrices, funnels, timelines, org charts), built design-system-first (tokens, library text styles, components) and verified by a compliance gate. Use whenever asked to design a slide, a diagram for a deck, or any presentation visual in Penpot — read it before creating the first shape.
 ---
 
 # Slide Diagram Design
@@ -42,15 +42,21 @@ If you cannot name the hero, the slide has no focal point. Fix that before desig
 
 ## 4. Color
 
-- Build a palette of exactly:
+**Colors live in the design system, never on the slide.** The roles below are the semantic tokens
+(`color.bg`, `color.text.primary|muted`, `color.accent.1–5.fill|tint|border`, `color.hero.fill|text|tint`).
+If the file already has a token system, use it. If a role is missing, add the token first. Pick
+Dark or Light by **theme**, not by repainting. The art direction below describes what good token
+values look like when creating a new system:
+
+- The palette has exactly:
   - **Background** — either deep (navy #0B1026-ish, near-black) or warm off-white (#F7F5F0-ish). Dark backgrounds make color glow and feel premium on projectors.
   - **Ink** — primary text (white on dark / #111 on light).
   - **Muted ink** — ~60% contrast version for secondary text.
   - **One accent ramp** — 3–5 steps of a related hue family (e.g. violet → blue → teal → green) for sequenced items. Adjacent hues read as "one system that progresses."
   - **One hot highlight** — a contrasting color (coral, amber) used only on the hero.
 - Never use pure saturated defaults (#FF0000, #0000FF). Pick tuned colors.
-- Gradients: subtle, two stops of neighboring hues, ~135°. One gradient family per slide.
-- Text on colored fills must hit 4.5:1 contrast. Check white-on-color.
+- **No gradients in themed decks**: there is no gradient token, so gradients can't switch with the theme. Get depth from tinted glow shadows (`shadow.glow.N`) and a blurred `color.atmosphere` shape instead. (Both slides kept their polish this way.)
+- Text on colored fills must hit 4.5:1 contrast **in every theme**. Use `color.text.on-accent` (white on deep accents in Light, navy on luminous accents in Dark) rather than assuming white.
 
 ## 5. Shape language
 
@@ -78,21 +84,33 @@ If you cannot name the hero, the slide has no focal point. Fix that before desig
 
 ## 8. Penpot build discipline
 
-Load the `penpot-mcp` skill for API mechanics (connection, verified gotchas, gradients, arrow caps, Bézier arcs). This section only covers build habits.
+Load the `penpot-mcp` skill for API mechanics, and **follow `penpot-mcp/references/design-system-gate.md`**
+for the build order and helpers. This section only covers build habits.
 
+**Build order: system → components → slide → gate → review.**
+
+1. **System first.** Read the file's tokens, library text styles (`Text/…`) and components. Anything the slide needs that's missing (a color role, a type size, a node style) gets added to the system *before* the slide uses it.
+2. **Components for anything repeated.** Nodes, chips, bars, footers are component copies (variants for accent/emphasis). Override only text and size on copies; restyle by editing the main.
+3. **Slide from tokens only.** Use the token-only helpers (`storage.ds.fill/stroke/radius/shadow/text`). No hex values, font sizes or shadow values in slide code.
+4. **Gate.** `storage.audit(board)` in a separate call must return `pass: true`.
+
+Habits:
 - Name every shape semantically (`Node 03 / Better Product`, `Arc 2→3`, `Headline`).
-- Group each node (circle + number + label) so it moves as a unit.
-- Compute geometry in code (angles, positions) — never eyeball.
-- Store helper functions in `storage` and reuse them.
-- Fonts: confirm availability with `penpot.fonts.findByName(...)` and apply via `font.applyToText(text, variant)`.
+- Group each logical unit so it moves together (tokens bind to the children, not the group).
+- Compute geometry in code (angles, positions), never by eye. Geometry is exempt from tokens.
+- Store helper functions in `storage` and rebuild them in the first call of a session.
 
 ## 9. Review loop (mandatory)
 
-After building, export the board as PNG and critique it honestly:
+First the **compliance gate** must pass (see §8). Then export the board **by id** and critique it honestly:
 1. Where does the eye land first? Is that the hero?
 2. Squint test: does the structure still read when blurred?
 3. Is anything misaligned, cramped, colliding, or clipped? Any text overflowing its box?
 4. Is any text too small to read at 50% zoom?
 5. Would this look at home in a top-tier keynote? If it looks like a default template, push contrast, scale, and white space further.
 
-Fix what you find and export again. Do at least one revision pass before calling it done.
+6. **Theme test:** switch to the other theme and export again. A compliant slide restyles with zero edits and stays readable; if it breaks, fix the *tokens*, not the slide.
+
+Fix what you find and export again. If a fix is reusable (a new size, a role, a variant), make it
+in the system so every slide benefits. Do at least one revision pass before calling it done, and
+re-run the gate after every fix.

@@ -384,7 +384,7 @@ function ensureTypography(
   if (existing) return existing;
   const typo = penpot.library.local.createTypography();
   typo.name = name;
-  typo.fontFamilies = fontFamilies; // ← 'fontFamilies' not 'fontFamily'
+  typo.setFont(penpot.fonts.all.find((f) => f.name === fontFamilies)); // [fork] field is fontFamily; set via setFont(font, variant)
   typo.fontWeight = fontWeight; // string: '700'
   typo.fontSize = fontSize; // string: '16' (MUST be string)
   typo.lineHeight = lineHeight; // string: '1.5'
@@ -578,12 +578,12 @@ ensureTheme("Theme", "Dark", [base, dark]);
 // for that. This only tells you what variants THIS file already relies on.
 const typos = penpot.library.local.typographies;
 const interWeights = typos
-  .filter((t) => t.fontFamilies === "Inter 28pt") // match the real fontFamilies value below, not the bare family name
+  .filter((t) => t.fontFamily === "Inter") // [fork] fontFamily, singular
   .map((t) => t.fontWeight);
 // Only use weights confirmed in interWeights array
 
-// Library typographies use 'fontFamilies' (not 'fontFamily')
-typo.fontFamilies = "Inter 28pt"; // ← fontFamilies, not fontFamily
+// [fork] Library typographies expose 'fontFamily' (singular); set it with typo.setFont(font, variant)
+typo.setFont(font, variant); // [fork] not typo.fontFamilies
 ```
 
 ### Library fontSize — must be string
@@ -855,7 +855,7 @@ function ensureTypography(
     (() => {
       const t = penpot.library.local.createTypography();
       t.name = name;
-      t.fontFamilies = fontFamilies;
+      t.setFont(penpot.fonts.all.find((f) => f.name === fontFamilies)); // [fork]
       t.fontWeight = weight;
       t.fontSize = size;
       t.lineHeight = lineHeight;
