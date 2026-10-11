@@ -58,9 +58,9 @@ live probe win**. Update this table when you learn something new.
 - Curves: set `path.content = "M x y C x1 y1 x2 y2 x y"` in absolute coordinates. For circular
   arcs, use a cubic Bézier approximation (`k = 4/3·tan(Δθ/4)`) rather than SVG `A` commands.
 - Shadows: `color: { color: '#HEX', opacity: n }`. Tinted, large-blur shadows give a glow.
-- Text: `penpot.fonts.findByName('Inter')` then `font.applyToText(text, variant)`; set
+- Text: `penpot.fonts.all.find(f => f.name === 'Inter')` then `font.applyToText(text, variant)`; set
   `fontSize`/`lineHeight`/`letterSpacing` as strings; after `resize()` always reset `growType`.
-  `findByName` may match by substring, so filter `penpot.fonts.all` by exact `name` when it matters.
+  **`findByName` matches by substring (verified):** `findByName('Inter')` returned **Inter Tight**, and the v1 flywheel shipped in the wrong font unnoticed. Always use `penpot.fonts.all.find(f => f.name === 'Inter')`.
 
 ---
 
