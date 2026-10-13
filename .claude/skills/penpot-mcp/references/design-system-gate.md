@@ -134,6 +134,35 @@ storage.audit = (root) => {
 mains. (Here: v1 slides failed with 74/82 violations; all 13 mains passed. It also caught a real
 bug, `applyTypography` dropping line height.)
 
+## 4b. Building on a shared (connected) library
+
+When the design system lives in another Penpot file and is connected here
+(`penpot.library.connected`), the local file starts with **no tokens, typographies or components of
+its own**. Verified 2026-10-13 against the Sekula library:
+
+1. **Read the library** (`const L = penpot.library.connected.find(l => l.name === …)`): `L.components`,
+   `L.colors`, `L.typographies`, `L.tokens.sets` (read-only view of its tokens).
+2. **Ask the user to click Import tokens** in the Libraries modal, then verify the local
+   `tokens.sets` counts equal `L.tokens.sets` and `findTokenByName` finds a known token.
+   Without it, `applyToken` silently does nothing. Import replaces the file's tokens, so only do it
+   in an empty file or after a backup. It is a copy: re-import when the library's tokens change.
+3. **Bind via tokens** (`color`, `strokeColor`/`strokeWidth`, `borderRadius*`, `shadow`) using the
+   token-only helpers in §2. Use semantic names; use `color.text.onAccent` for text on accent fills.
+4. **Text:** `libTypography.applyToText(t)` (links to the style; the editor shows the style name),
+   then `t.lineHeight = ty.lineHeight`. The library has no typography tokens.
+5. **Repeated elements:** instantiate the library's components (`L.components`, find by name + path,
+   pick variants via `variantProps`), override only text and size.
+6. **Gate for this setup:** a shape passes when every fill/stroke/radius/shadow has a token in
+   `shape.tokens` and every text layer's six values match some `L.typographies` entry. Skip the
+   internals of component instances (the library owns them) and count them separately. Run in a
+   separate call after the last write, and use `for`/index loops (see the `Object.entries` row in
+   SKILL.md).
+7. **Theme test:** `themes.find(t => t.name === 'Dark').toggleActive()`, export, then toggle back to
+   the original theme. Fix contrast problems in token choice (e.g. `onAccent`) or in the library,
+   never on the slide.
+8. If the library's type scale is web-sized (labels 11-20px), build the slide at 1280×720 so the
+   library styles read at slide scale rather than adding off-system sizes.
+
 ## 5. Workflow
 
 ```

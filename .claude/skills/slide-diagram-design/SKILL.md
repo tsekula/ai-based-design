@@ -20,8 +20,11 @@ If you cannot name the hero, the slide has no focal point. Fix that before desig
 
 ## 2. Canvas and grid
 
-- Board: **1920×1080** (16:9), named for the slide.
-- Safe margin: **96px** all sides. Nothing important outside it.
+- Board: **1920×1080** (16:9), named for the slide. **Exception:** when the design system comes from
+  a shared library whose type scale is web-sized (body 16-18, labels 11-14, largest heading ~76),
+  build at **1280×720** (margin 64) so the library's own styles read at slide scale; never add
+  off-system sizes to compensate. The scale rules below then apply at 2/3 size.
+- Safe margin: **96px** all sides (64px on a 1280×720 board). Nothing important outside it.
 - Work on an **8px grid**: all positions, sizes, and gaps are multiples of 8.
 - Split the canvas deliberately. Strong defaults:
   - **Title left / diagram right** (≈ 38/62 split) for concept diagrams.
