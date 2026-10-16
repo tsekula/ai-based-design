@@ -1,6 +1,6 @@
 ---
 name: figcraft
-description: Design with FigCraft (a Figma-class interface design tool) through its MCP server, either headless via the figcraft-cli or attached to the running FigCraft app. Use this skill whenever the user mentions FigCraft or figcraft-cli, or asks to create, edit, inspect, screenshot or export frames, components, auto layout, styles, variables, prototypes or pages in FigCraft, or to set up / connect the FigCraft MCP server, even if they only say "make a frame in the app" or "design a screen".
+description: Design with FigCraft (a Figma-class interface design tool) through its MCP server, either headless via the figcraft-cli or attached to the running FigCraft app. Use this skill whenever the user mentions FigCraft or figcraft-cli, or asks to create, edit, inspect, screenshot or export frames, components, auto layout, styles, variables (design tokens), shared libraries, prototypes or pages in FigCraft, or to build on-system designs with a compliance check, or to set up / connect the FigCraft MCP server, even if they only say "make a frame in the app" or "design a screen".
 ---
 
 # FigCraft
@@ -90,3 +90,51 @@ grep -n '^##' references/mcp-v0.6.0.md
 ```
 
 The doc describes v0.6.0; if the installed version differs, trust `list_commands` output over the doc.
+
+## 7. Design system first (variables, styles, libraries)
+
+FigCraft's equivalents of Penpot's concepts: **variables** (collections with modes) = design tokens, **styles** (paint/text/effect/grid) = library colors and typographies, **libraries** (`library.*`) = shared libraries, **components + variants** = components. Build on these instead of hard-coding values, so a design restyles by switching a mode.
+
+### Architecture
+| Concern | Mechanism |
+|---|---|
+| Color, radius, gap/padding, opacity, sizes | **Variables** bound with `variable.bind` (`field`: `fill`, `stroke`, `cornerRadius`, `gap`, `paddingHorizontal`, `opacity`, `fills/<i>/color`, `effects/<i>/color`, ...) |
+| Themes (light/dark) | **Modes** of a collection (`variable.createCollection {modes}`, `variable.addMode`); switch per frame/page with `variable.setMode` |
+| Text | **Text styles** (`style.create {type:"text"}`, `style.apply`). Text styles can bind `fontSize`, `lineHeight`, `letterSpacing`, `fontFamily`, `fontStyle` to variables via `style.bind` |
+| Shadows, grids | **Effect / grid styles**; bind their colors/radii with `style.bind` |
+| Repeated elements | **Components** (`component.create`) and instances; override text and size only |
+| Sharing across files | **Libraries**: `library.publish`, `library.add`, `library.place` |
+
+Two-tier naming works well: a *primitives* collection (raw values, `color/indigo/700`) and a *semantic* collection (`bg/surface`, `text/primary`, `accent/1/fill`) whose variables alias primitives (`variable.set {variable, value:{alias:"<primitive>"}}`). Designs bind **only semantic** variables, and each mode of the semantic collection (Light, Dark) maps to different primitives. Set `variable.update {scopes}` so pickers offer a variable only for the right properties, and `hiddenFromPublishing` for primitives you don't want offered.
+
+Variable JSON round-trips: `variable.export {format:"json"|"css"}` and `variable.import {variables}` (merges by collection name, adds modes/variables). Use this to import a token set from a file.
+
+### Workflow
+1. **Read the system**: `variable.list`, `style.list`, `library.list {assets:true}` (what enabled libraries offer), and `inspect_document`.
+2. **Add what is missing to the system first** (a variable, a text style, a component), never as a one-off value on the design.
+3. **Build** with bound variables, applied styles and component instances. Create the layer, then bind: `variable.bind {ids, field, variable}`; text gets `style.apply {ids, style}`. A raw hex or font size in `props` is only a placeholder until it is bound.
+4. **Gate** (below) must pass.
+5. **Review**: `screenshot {ids}` and critique. If a fix is reusable, change the system (variable, style, main component), not the layer.
+6. **Mode test**: `variable.setMode {ids:[<root frame>], collection, mode:"Dark"}`, screenshot, then set it back. A compliant design restyles with zero edits; fix contrast in the variable choice or the library.
+
+### Building on a shared library
+- The library file publishes (`library.publish`, then `file.save`); the consumer enables it (`library.add {path}`; a team library takes a share link). Library assets are linked, read-only copies: edit the library file and publish, never the copies.
+- Use `library.place {library, component}` for components, `library.applyStyle {library, style, ids}` for styles, `library.bindVariable {library, variable, field, ids}` for tokens, `library.setVariableMode` for a library collection's mode.
+- To tweak a library's tokens locally without forking, `library.extendCollection` makes an inheriting collection; override per mode with `variable.set`, undo with `variable.resetOverride`.
+- After the library changes: `library.updates`, then `library.acceptUpdates`. Instance overrides and bindings follow. `library.swap {from, to}` re-points everything to another library.
+- Unlike Penpot there is no separate "import tokens" step: binding or placing copies what it needs in.
+
+### Compliance gate
+Run after the last write. `get_node {id}` (or `inspect_document`) returns, for every layer, `boundVariables` (field → variable id) and `styles` (`fill`/`stroke`/`effect`/`grid`/`text` → style id or null). A layer passes when:
+- it has a solid fill and `boundVariables.fill` **or** `styles.fill` is set (no bare `#hex` fill; image fills are exempt);
+- every stroke has a bound color (`boundVariables.stroke`) and `strokeWeight` is a bound variable or a deliberate 0/1;
+- a nonzero `cornerRadius` appears in `boundVariables`;
+- effects come from an effect style (`styles.effect`) or have bound colors;
+- a TEXT layer has `styles.text` set, **and** `textStyleRanges` covers the whole string with that one style (a gap or a second style means mixed styling), **and** its fill is bound (text fills are `fills` on the text layer: use `variable.bind {field:"fills/0/color"}` or a paint style);
+- gap/padding are bound where the system defines spacing variables.
+
+Walk the tree from the root (including instances: overrides can break compliance, but skip the internals of *library* component instances and just count them). Report `pass`, number of layers checked, a list of `{path, issue}`, and how many top-level elements are component instances. Geometry (x/y/width/height) and blur are exempt.
+
+Calibrate first: the gate must FAIL a known hard-coded frame and PASS the system's own component mains. `inspect.properties {id}` shows the style/variable name behind each row (`token`), which is handy for spot checks and for explaining a violation.
+
+Verified live on 0.6.0 (headless, 2026-10-16): `variable.bind` shows in `boundVariables` keyed by the field you bound (`fill`, `stroke`, `cornerRadius`, `gap`, and `fills/0/color` on text), while `fills[0].color` reports the resolved colour, so never judge compliance from `fills`; `style.apply` on text sets `styles.text` and `textStyleRanges`. Not yet verified: the `boundVariables` key for stroke weight and padding, and gate behaviour on library-instance internals.
