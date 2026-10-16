@@ -1,5 +1,5 @@
 ---
-name: slide-diagram-design
+name: penpot-slide-diagram-design
 description: Art direction for attractive, eye-catching presentation diagrams built in Penpot (flywheels, flows, matrices, funnels, timelines, org charts), built design-system-first (tokens, library text styles, components) and verified by a compliance gate. Use whenever asked to design a slide, a diagram for a deck, or any presentation visual in Penpot — read it before creating the first shape.
 ---
 

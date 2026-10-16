@@ -15,7 +15,7 @@ Workflows for creating, auditing and maintaining designs and design systems in P
 official Penpot MCP Server. Forked from [`ar27111994/penpot-mcp`](https://github.com/ar27111994/penpot-mcp)
 v1.6.0 (MIT, see `LICENSE-UPSTREAM`), trimmed to this environment and corrected where upstream
 contradicted this instance. For **visual quality** of slides and diagrams, also load the
-`slide-diagram-design` skill. This skill covers mechanics; that one covers art direction.
+`penpot-slide-diagram-design` skill. This skill covers mechanics; that one covers art direction.
 
 ## Verified on this instance (2026-10-11), takes precedence over everything below
 
@@ -177,7 +177,7 @@ Token tiers: Global (`color.base.neutral.100`) → Semantic (`color.text.primary
 - Design system build / audit / migration / rebrand → `references/design-system-workflows.md`
 - Design → HTML/CSS/React, token extraction, handoff → `references/design-to-code-workflows.md`
 - Flows, interactions, overlays, animations → `references/prototyping-workflows.md`
-- Slides and presentation diagrams → `slide-diagram-design` skill
+- Slides and presentation diagrams → `penpot-slide-diagram-design` skill
 
 ## 6. File best practices
 
