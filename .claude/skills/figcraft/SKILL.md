@@ -137,4 +137,22 @@ Walk the tree from the root (including instances: overrides can break compliance
 
 Calibrate first: the gate must FAIL a known hard-coded frame and PASS the system's own component mains. `inspect.properties {id}` shows the style/variable name behind each row (`token`), which is handy for spot checks and for explaining a violation.
 
-Verified live on 0.6.0 (headless, 2026-10-16): `variable.bind` shows in `boundVariables` keyed by the field you bound (`fill`, `stroke`, `cornerRadius`, `gap`, and `fills/0/color` on text), while `fills[0].color` reports the resolved colour, so never judge compliance from `fills`; `style.apply` on text sets `styles.text` and `textStyleRanges`. Not yet verified: the `boundVariables` key for stroke weight and padding, and gate behaviour on library-instance internals.
+Verified live on 0.6.0 (headless): `variable.bind` shows in `boundVariables` keyed by the field you bound (`fill`, `stroke`, `strokeWeight`, `cornerRadius`, `gap`, `paddingHorizontal`, `paddingVertical`, and `fills/0/color` on text), while `fills[0].color` reports the resolved colour, so never judge compliance from `fills`; `style.apply` on text sets `styles.text` and `textStyleRanges`. Instance children are materialised with their own bindings, so a tree walk needs no special handling for instances.
+
+**Scripted gate (preferred).** A tree walk through MCP JSON is too large to read by eye. Save the document (`save_file` to a `.figcraft`, a zip holding `document.json`) and run `scripts/audit.py`:
+
+```sh
+python3 -I scripts/audit.py file.figcraft <root-id> [<root-id> ...]   # exit 1 on violations
+```
+
+It checks fills, stroke colour/weight, radius, gap, padding, effect styles, text style and text colour, and rejects colours bound straight to the primitives tier. Calibrate it as above: pass the ids of a known-bad frame (must fail) and of the component mains (must pass). It caught a real bug in the flywheel build: a row frame inside a component kept FigCraft's default white fill, invisible in Light and a white band in Dark.
+
+### Lessons from building a themed diagram
+- **Fresh document**: `run_command file.new {name}` starts clean; do this in headless rather than editing the attached app's open document.
+- **Fonts**: `text.fonts {}` lists what is installed. Headless has only Inter (Regular/Italic/SemiBold/Bold); the attached app has system fonts. Brand fonts that are missing need a stand-in (e.g. Poppins for Rubik, Noto Sans Mono for DM Mono). Say so to the user.
+- **Modes**: `variable.setMode` must name the frames with `ids`. Setting it on an instance flips that instance and its nested instances, so one component can serve two colourways (a `Side` collection with Supply/Demand modes that alias the `Theme` collection also keeps Light/Dark working). Verify with a screenshot.
+- **Page-level mode**: calling `variable.setMode` without `ids` is not a safe no-op; it changed every card on the page.
+- **Rotation**: `rotation` is degrees **counter-clockwise** about the layer's centre, and an instance's reported `x`/`y` is its transformed origin, so place the unrotated layer first, then rotate. For an arrow along a clockwise ring use `-(φ+90)` with φ the tangent angle. Use a narrow triangle: an equilateral one looks identical at 120°.
+- **Defaults**: new frames get a white fill; pass `fills:[]` for layout-only frames. `component.create` on a bare layer wraps it, so the id changes (use the returned one).
+- **Instance text**: `node.set {ids:[<text layer in instance>], characters}`; child ids inside copies of a component follow a fixed stride, so read one instance's ids first.
+- **Don't** call `variable.list` on a real file: it prints every value of every variable. Use `library.list`/`inspect_document` counts or read `document.json`.
